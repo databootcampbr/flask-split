@@ -86,6 +86,10 @@ A list of configuration keys currently understood by the extension:
     The database URL that should be used for the Redis connection. Defaults to
     ``'redis://localhost:6379'``.
 
+``KAFKA_SERVERS``
+    The database URL that should be used for the Kafka send events. Defaults to
+    ``'localhost:9092'``.
+
 ``SPLIT_ALLOW_MULTIPLE_EXPERIMENTS``
     If set to `True` Flask-Split will allow users to participate in multiple
     experiments.
