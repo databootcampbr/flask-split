@@ -33,6 +33,7 @@ setup(
     install_requires=[
         'Flask>=0.7',
         'Redis>=2.4.13',
+        'kafka-python==1.3.5'
     ],
     cmdclass={'test': PyTest},
     classifiers=[

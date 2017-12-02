@@ -15,8 +15,9 @@ from random import random
 
 
 class Alternative(object):
-    def __init__(self, redis, name, experiment_name):
+    def __init__(self, kafka, redis, name, experiment_name):
         self.redis = redis
+        self.kafka = kafka
         self.experiment_name = experiment_name
         if isinstance(name, tuple):
             self.name, self.weight = name
@@ -48,9 +49,11 @@ class Alternative(object):
 
     def increment_participation(self):
         self.redis.hincrby(self.key, 'participant_count', 1)
+        self.kafka.send(self.key, b'participant_count')
 
     def increment_completion(self):
         self.redis.hincrby(self.key, 'completed_count', 1)
+        self.kafka.send(self.key, b'completed_count')
 
     @property
     def is_control(self):
@@ -130,11 +133,12 @@ class Alternative(object):
 
 
 class Experiment(object):
-    def __init__(self, redis, name, *alternative_names):
+    def __init__(self, kafka, redis, name, *alternative_names):
         self.redis = redis
+        self.kafka = kafka
         self.name = name
         self.alternatives = [
-            Alternative(redis, alternative, name)
+            Alternative(kafka, redis, alternative, name)
             for alternative in alternative_names
         ]
 
@@ -145,7 +149,7 @@ class Experiment(object):
     def _get_winner(self):
         winner = self.redis.hget('experiment_winner', self.name)
         if winner:
-            return Alternative(self.redis, winner, self.name)
+            return Alternative(self.kafka, self.redis, winner, self.name)
 
     def _set_winner(self, winner_name):
         self.redis.hset('experiment_winner', self.name, winner_name)
@@ -250,7 +254,7 @@ class Experiment(object):
             return cls(redis, name, *cls.load_alternatives_for(redis, name))
 
     @classmethod
-    def find_or_create(cls, redis, key, *alternatives):
+    def find_or_create(cls, kafka, redis, key, *alternatives):
         name = key.split(':')[0]
 
         if len(alternatives) < 2:
@@ -263,10 +267,10 @@ class Experiment(object):
                 experiment.reset()
                 for alternative in experiment.alternatives:
                     alternative.delete()
-                experiment = cls(redis, name, *alternatives)
+                experiment = cls(kafka, redis, name, *alternatives)
                 experiment.save()
         else:
-            experiment = cls(redis, name, *alternatives)
+            experiment = cls(kafka, redis, name, *alternatives)
             experiment.save()
         return experiment
 

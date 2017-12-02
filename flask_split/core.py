@@ -15,7 +15,7 @@ from flask import current_app, request, session
 from redis import ConnectionError
 
 from .models import Alternative, Experiment
-from .utils import _get_redis_connection
+from .utils import _get_redis_connection, _get_kafka_connection
 from .views import split
 
 
@@ -76,9 +76,10 @@ def ab_test(experiment_name, *alternatives):
         is the control.  Every experiment must have at least  two alternatives.
     """
     redis = _get_redis_connection()
+    kafka = _get_kafka_connection()
     try:
         experiment = Experiment.find_or_create(
-            redis, experiment_name, *alternatives)
+            kafka, redis, experiment_name, *alternatives)
         if experiment.winner:
             return experiment.winner.name
         else:
@@ -117,6 +118,7 @@ def finished(experiment_name, reset=True):
     if _exclude_visitor():
         return
     redis = _get_redis_connection()
+    kafka = _get_kafka_connection()
     try:
         experiment = Experiment.find(redis, experiment_name)
         if not experiment:
@@ -126,7 +128,7 @@ def finished(experiment_name, reset=True):
             split_finished = set(session.get('split_finished', []))
             if experiment.key not in split_finished:
                 alternative = Alternative(
-                    redis, alternative_name, experiment_name)
+                    kafka, redis, alternative_name, experiment_name)
                 alternative.increment_completion()
             if reset:
                 _get_session().pop(experiment.key, None)

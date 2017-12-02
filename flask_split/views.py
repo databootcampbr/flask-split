@@ -14,7 +14,7 @@ import os
 from flask import Blueprint, redirect, render_template, request, url_for
 
 from .models import Alternative, Experiment
-from .utils import _get_redis_connection
+from .utils import _get_redis_connection, _get_kafka_connection
 
 
 root = os.path.abspath(os.path.dirname(__file__))
@@ -44,10 +44,11 @@ def index():
 def set_experiment_winner(experiment):
     """Mark an alternative as the winner of the experiment."""
     redis = _get_redis_connection()
+    kafka = _get_kafka_connection()    
     experiment = Experiment.find(redis, experiment)
     if experiment:
         alternative_name = request.form.get('alternative')
-        alternative = Alternative(redis, alternative_name, experiment.name)
+        alternative = Alternative(kafka, redis, alternative_name, experiment.name)
         if alternative.name in experiment.alternative_names:
             experiment.winner = alternative.name
     return redirect(url_for('.index'))
