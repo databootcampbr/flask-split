@@ -120,7 +120,7 @@ def finished(experiment_name, reset=True):
     redis = _get_redis_connection()
     kafka = _get_kafka_connection()
     try:
-        experiment = Experiment.find(redis, experiment_name)
+        experiment = Experiment.find(kafka, redis, experiment_name)
         if not experiment:
             return
         alternative_name = _get_session().get(experiment.key)

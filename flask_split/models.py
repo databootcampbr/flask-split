@@ -12,12 +12,14 @@
 from datetime import datetime
 from math import sqrt
 from random import random
+from flask import current_app
 
 
 class Alternative(object):
     def __init__(self, kafka, redis, name, experiment_name):
         self.redis = redis
         self.kafka = kafka
+        self.topic = current_app.config.get('KAFKA_TOPIC', 'ab_test')
         self.experiment_name = experiment_name
         if isinstance(name, tuple):
             self.name, self.weight = name
@@ -48,12 +50,12 @@ class Alternative(object):
     )
 
     def increment_participation(self):
+        self.kafka.send(self.topic, key=bytes(self.key), value=b'participant_count')
         self.redis.hincrby(self.key, 'participant_count', 1)
-        self.kafka.send(self.key, b'participant_count')
 
     def increment_completion(self):
+        self.kafka.send(self.topic, key=bytes(self.key), value=b'completed_count')
         self.redis.hincrby(self.key, 'completed_count', 1)
-        self.kafka.send(self.key, b'completed_count')
 
     @property
     def is_control(self):
@@ -67,7 +69,7 @@ class Alternative(object):
 
     @property
     def experiment(self):
-        return Experiment.find(self.redis, self.experiment_name)
+        return Experiment.find(self.kafka, self.redis, self.experiment_name)
 
     def save(self):
         self.redis.hsetnx(self.key, 'participant_count', 0)
@@ -245,13 +247,13 @@ class Experiment(object):
         return redis.lrange(name, 0, -1)
 
     @classmethod
-    def all(cls, redis):
-        return [cls.find(redis, e) for e in redis.smembers('experiments')]
+    def all(cls, kafka, redis):
+        return [cls.find(kafka, redis, e) for e in redis.smembers('experiments')]
 
     @classmethod
-    def find(cls, redis, name):
+    def find(cls, kafka, redis, name):
         if name in redis:
-            return cls(redis, name, *cls.load_alternatives_for(redis, name))
+            return cls(kafka, redis, name, *cls.load_alternatives_for(redis, name))
 
     @classmethod
     def find_or_create(cls, kafka, redis, key, *alternatives):
@@ -260,7 +262,7 @@ class Experiment(object):
         if len(alternatives) < 2:
             raise TypeError('You must declare at least 2 alternatives.')
 
-        experiment = cls.find(redis, name)
+        experiment = cls.find(kafka, redis, name)
         if experiment:
             alts = [a[0] if isinstance(a, tuple) else a for a in alternatives]
             if [a.name for a in experiment.alternatives] != alts:

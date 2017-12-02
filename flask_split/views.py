@@ -35,8 +35,9 @@ def inject_version():
 def index():
     """Render a dashboard that lists all active experiments."""
     redis = _get_redis_connection()
+    kafka = _get_kafka_connection()
     return render_template('split/index.html',
-        experiments=Experiment.all(redis)
+        experiments=Experiment.all(kafka, redis)
     )
 
 

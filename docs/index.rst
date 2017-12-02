@@ -87,8 +87,12 @@ A list of configuration keys currently understood by the extension:
     ``'redis://localhost:6379'``.
 
 ``KAFKA_SERVERS``
-    The database URL that should be used for the Kafka send events. Defaults to
+    The broker URL that should be used for the Kafka send events. Defaults to
     ``'localhost:9092'``.
+
+``KAFKA_TOPIC``
+    The topic for Kafka send events. Defaults to
+    ``'ab_test'``.
 
 ``SPLIT_ALLOW_MULTIPLE_EXPERIMENTS``
     If set to `True` Flask-Split will allow users to participate in multiple
